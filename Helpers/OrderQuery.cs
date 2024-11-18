@@ -12,9 +12,9 @@ namespace ecommerce.Helpers
 {
     public class OrderQuery
     {
-        [SwaggerSchema(Description = "Start date of the order period")]
         public DateOnly? DateStart { get; set; }
-        [SwaggerSchema(Description = "End date of the order period")]
         public DateOnly? DateEnd { get; set; }
+        public int? PageSize { get; set; } = 10;
+        public int? PageNumber { get; set; } = 1;
     }
 }

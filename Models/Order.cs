@@ -8,14 +8,14 @@ namespace ecommerce.Models
     public class Order
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
-        public string PhoneNumber { get; set; } = string.Empty;
-        public string Address1 { get; set; } = string.Empty;
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Address1 { get; set; }
         public string? Address2 { get; set; }
-        public string District { get; set; } = string.Empty;
-        public string City { get; set; } = string.Empty;
-        public string Payment { get; set; } = string.Empty;
+        public string District { get; set; }
+        public string City { get; set; }
+        public string Payment { get; set; }
         public DateTime CreateAt { get; set; } = DateTime.Now;
         public DateTime? UpdateAt { get; set; }
         [Column(TypeName = "decimal(18, 2)")]

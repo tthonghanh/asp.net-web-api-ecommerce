@@ -82,7 +82,8 @@ namespace ecommerce.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            if (User.IsInRole("Admin")) {
+            if (User.IsInRole("Admin"))
+            {
                 var feedback = await _feedbackRepo.AdminDeleteFeedbackAsync(id);
                 if (feedback == null) return NotFound("Feedback not found");
 

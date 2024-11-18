@@ -10,6 +10,6 @@ namespace ecommerce.Interfaces
         Task<Category> CreateCategoryAsync(Category categoryModel);
         Task<Category?> UpdateCategoryAsync(string id, UpdateCategoryRequestDto categoryDto);
         Task<Category?> DeleteCategoryAsync(string id);
-        Task<bool> CategoryExist(string id);
+        Task<bool> CategoryExist(string? id);
     }
 }

@@ -15,12 +15,15 @@ namespace ecommerce.Repositories
 
         public async Task<CartItem?> CreateCartItemAsync(CartItem cartItemModel)
         {
-            var userCart = await GetCartItemsByCustomerIdAsync(cartItemModel.AppUserId);
-            if (userCart != null) {
+            var userCart = await GetCartItemsByCustomerIdAsync(cartItemModel.AppUserId!);
+            if (userCart != null)
+            {
                 var product = userCart.FirstOrDefault(c => c.ProductId == cartItemModel.ProductId);
-                if (product != null) {
+                if (product != null)
+                {
                     if (product.Quantity + cartItemModel.Quantity > 10) return null;
-                    else {
+                    else
+                    {
                         product.Quantity += cartItemModel.Quantity;
                         await _context.SaveChangesAsync();
                         return product;

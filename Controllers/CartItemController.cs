@@ -22,7 +22,8 @@ namespace ecommerce.Controllers
 
         [HttpGet("GetAllCartItems")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllCartItems() {
+        public async Task<IActionResult> GetAllCartItems()
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var cartItemModel = await _cartItemRepo.GetAllCartItemsAsync();
@@ -32,7 +33,8 @@ namespace ecommerce.Controllers
 
         [HttpGet("GetCartItemsByCustomerId/{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetCartItemsByCustomerId([FromRoute] string id) {
+        public async Task<IActionResult> GetCartItemsByCustomerId([FromRoute] string id)
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var cartItemModel = await _cartItemRepo.GetCartItemsByCustomerIdAsync(id);
@@ -42,7 +44,8 @@ namespace ecommerce.Controllers
 
         [HttpGet("GetCustomerCart")]
         [Authorize]
-        public async Task<IActionResult> GetCustomerCart() {
+        public async Task<IActionResult> GetCustomerCart()
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var appUser = await _userService.GetUserAsync();
@@ -55,7 +58,8 @@ namespace ecommerce.Controllers
 
         [HttpPost("AddProductToCart/{productId}")]
         [Authorize(Roles = "Customer")]
-        public async Task<IActionResult> CreateCartItem([FromRoute] string productId, [FromForm] CreateCartItemRequestDto cartItemDto) {
+        public async Task<IActionResult> CreateCartItem([FromRoute] string productId, [FromForm] CreateCartItemRequestDto cartItemDto)
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var appUser = await _userService.GetUserAsync();
@@ -74,7 +78,8 @@ namespace ecommerce.Controllers
 
         [HttpPut("UpdateCartItemById/{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateCartItemById([FromRoute] string id, [FromForm] int quantity) {
+        public async Task<IActionResult> UpdateCartItemById([FromRoute] string id, [FromForm] int quantity)
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var appUser = await _userService.GetUserAsync();
@@ -88,7 +93,8 @@ namespace ecommerce.Controllers
 
         [HttpDelete("DeleteCartItemById/{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteCartItemById([FromRoute] string id) {
+        public async Task<IActionResult> DeleteCartItemById([FromRoute] string id)
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var appUser = await _userService.GetUserAsync();

@@ -44,7 +44,7 @@ namespace ecommerce.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            if (categoryDto.ParentCategory != "0" && !await _categoryRepo.CategoryExist(categoryDto.ParentCategory)) return NotFound("Parent category not found");
+            if (categoryDto.ParentCategory != null && !await _categoryRepo.CategoryExist(categoryDto.ParentCategory)) return NotFound("Parent category not found");
 
             var categoryModel = categoryDto.ToCategoryFromCreate();
             await _categoryRepo.CreateCategoryAsync(categoryModel);

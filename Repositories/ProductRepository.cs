@@ -1,10 +1,14 @@
 using System.Data;
 using ecommerce.Data;
+using ecommerce.Dtos.FeedbackDtos;
 using ecommerce.Dtos.ProductDtos;
+using ecommerce.Dtos.ProductImageDtos;
 using ecommerce.Helpers;
 using ecommerce.Interfaces;
 using ecommerce.Mappers;
 using ecommerce.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,104 +25,224 @@ namespace ecommerce.Repositories
             _productImageRepo = productImageRepo;
             _connString = config.GetConnectionString("DefaultConnection")!;
         }
-        public async Task<(Product product, bool succeed, string message)> CreateProductAsync(CreateProductRequestDto productDto)
+        public async Task CreateProductAsync(CreateProductRequestDto productDto)
         {
-            var productModel = productDto.ToProductFromCreate();
-
-            await _context.Products.AddAsync(productModel);
-            var uploadImageResult = await _productImageRepo.UploadProductImageFromProductCreateAsync(productModel.Id, productDto);
-
-            if (!uploadImageResult.succeed) return (productModel, false, uploadImageResult.message);
-
-            await _context.SaveChangesAsync();
-
-            return (productModel, true, uploadImageResult.message);
-        }
-
-        public async Task<Product?> DeleteProductAsync(string id)
-        {
-            var productModel = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
-            if (productModel == null) return null;
-
-            _context.Remove(productModel);
-            await _context.SaveChangesAsync();
-
-            return productModel;
-        }
-
-        public async Task<List<Product>> GetAllProductsAsync(QueryObject query)
-        {
-            var products = _context.Products
-                                    .Include(p => p.Feedbacks)
-                                    .ThenInclude(feedback => feedback.AppUser)
-                                    .AsQueryable();
-
-            // Search by product name
-            if (!string.IsNullOrWhiteSpace(query.ProductName))
+            try
             {
-                products = products.Where(p => p.Name.Contains(query.ProductName));
-            }
-
-            // Sort by options
-            if (!string.IsNullOrWhiteSpace(query.SortBy))
-            {
-                if (query.SortBy.Equals("Price", StringComparison.OrdinalIgnoreCase))
+                using (var connection = new SqlConnection(_connString))
                 {
-                    products = query.IsDecending ? products.OrderByDescending(product => product.ActualPrice) : products.OrderBy(product => product.ActualPrice);
+                    await connection.OpenAsync();
+                    using (var command = new SqlCommand("Create_Product", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        command.Parameters.AddWithValue("@Name", productDto.Name);
+                        command.Parameters.AddWithValue("@OriginalPrice", productDto.OriginalPrice);
+                        command.Parameters.AddWithValue("@ActualPrice", productDto.ActualPrice);
+                        command.Parameters.AddWithValue("@Description", productDto.Discription);
+                        command.Parameters.AddWithValue("@CategoryId", productDto.CategoryId);
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
+        public async Task DeleteProductAsync(string id)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_connString))
+                {
+                    using (var command = new SqlCommand("Delete_Product", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        command.Parameters.AddWithValue("@ProductId", id);
+
+                        await connection.OpenAsync();
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
+        public async Task<List<ProductDto>> GetAllProductsAsync(QueryObject query)
+        {
+            var products = new List<ProductDto>();
+            using (var connection = new SqlConnection(_connString))
+            {
+                using (var command = new SqlCommand("GetAllProducts", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+
+                    command.Parameters.AddWithValue("@QueryName", query.ProductName ?? null);
+                    command.Parameters.AddWithValue("@MinPrice", query.MinPrice ?? null);
+                    command.Parameters.AddWithValue("@MaxPrice", query.MaxPrice ?? null);
+                    command.Parameters.AddWithValue("@PageNumber", query.PageNumber ?? 1);
+                    command.Parameters.AddWithValue("@PageSize", query.PageSize ?? 20);
+
+                    await connection.OpenAsync();
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var product = new ProductDto
+                            {
+                                Id = reader.GetString(reader.GetOrdinal("Id")),
+                                Name = reader.GetString(reader.GetOrdinal("Name")),
+                                OriginalPrice = reader.GetDecimal(reader.GetOrdinal("OriginalPrice")),
+                                ActualPrice = reader.GetDecimal(reader.GetOrdinal("ActualPrice")),
+                                Discription = reader.GetString(reader.GetOrdinal("Discription")),
+                                CreateAt = reader.GetDateTime(reader.GetOrdinal("CreateAt")),
+                                CategoryId = reader.GetString(reader.GetOrdinal("CategoryId")),
+                                CategoryName = reader.GetString(reader.GetOrdinal("CategoryName")),
+                                Stars = reader.IsDBNull(reader.GetOrdinal("Stars")) ? null : reader.GetDecimal(reader.GetOrdinal("Stars")),
+                                SaleCount = reader.GetInt32(reader.GetOrdinal("SaleCount"))
+                            };
+
+                            products.Add(product);
+                        }
+                    }
                 }
             }
 
-            // Pagination
-            var skipNumber = (query.PageNumber - 1) * query.PageSize;
-
-            return await products
-                        .Skip(skipNumber)
-                        .Take(query.PageSize)
-                        .ToListAsync();
+            return products;
         }
 
-        public async Task<List<Product>?> GetAllProductsByCategoryIdAsync(string id, QueryObject query)
+        public async Task<List<ProductDto>?> GetAllProductsByCategoryIdAsync(string id, QueryObject query)
         {
-            var categoryExist = await _context.Categories.AnyAsync(category => category.Id == id);
-            if (!categoryExist) return null;
-
-            var products = _context.Products
-                                    .Where(p => p.CategoryId == id)
-                                    .Include(p => p.Feedbacks)
-                                    .ThenInclude(feedback => feedback.AppUser)
-                                    .AsQueryable();
-
-            // Search by product name
-            if (!string.IsNullOrWhiteSpace(query.ProductName))
+            try
             {
-                products = products.Where(p => p.Name.Contains(query.ProductName));
+                var products = new List<ProductDto>();
+                using (var connection = new SqlConnection(_connString)) {
+                    using (var command = new SqlCommand("GetById_Product_CategoryId", connection)) {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        command.Parameters.AddWithValue("@CategoryId", id);
+                        command.Parameters.AddWithValue("@QueryName", query.ProductName);
+                        command.Parameters.AddWithValue("@MinPrice", query.MinPrice);
+                        command.Parameters.AddWithValue("@MaxPrice", query.MaxPrice);
+                        command.Parameters.AddWithValue("@PageNumber", query.PageNumber);
+                        command.Parameters.AddWithValue("@PageSize", query.PageSize);
+
+                        await connection.OpenAsync();
+
+                        using (var reader = await command.ExecuteReaderAsync()) {
+                            var IdOrdinal = reader.GetOrdinal("Id");
+                            var NameOrdinal = reader.GetOrdinal("Name");
+                            var OriginalPriceOrdinal = reader.GetOrdinal("OriginalPrice");
+                            var ActualPriceOrdinal = reader.GetOrdinal("ActualPrice");
+                            var DiscriptionOrdinal = reader.GetOrdinal("Discription");
+                            var CreateAtOrdinal = reader.GetOrdinal("CreateAt");
+                            var CategoryIdOrdinal = reader.GetOrdinal("CategoryId");
+                            var CategoryNameOrdinal = reader.GetOrdinal("CategoryName");
+                            var StarsOrdinal = reader.GetOrdinal("Stars");
+
+                            while(await reader.ReadAsync()) {
+                                products.Add(new ProductDto {
+                                    Id = reader.GetString(IdOrdinal),
+                                    Name = reader.GetString(NameOrdinal),
+                                    OriginalPrice = reader.GetDecimal(OriginalPriceOrdinal),
+                                    ActualPrice = reader.GetDecimal(ActualPriceOrdinal),
+                                    Discription = reader.GetString(DiscriptionOrdinal),
+                                    CreateAt = reader.GetDateTime(CreateAtOrdinal),
+                                    CategoryId = reader.GetString(CategoryIdOrdinal),
+                                    CategoryName = reader.GetString(CategoryNameOrdinal),
+                                    Stars = reader.IsDBNull(StarsOrdinal) ? null : reader.GetDecimal(reader.GetOrdinal("Stars")),
+                                    SaleCount = reader.GetInt32(reader.GetOrdinal("SaleCount"))
+                                });
+                            }
+                        }
+                    }
+                }
+                return products;
             }
-
-            // Sort by options
-            if (!string.IsNullOrWhiteSpace(query.SortBy))
+            catch (SqlException ex)
             {
-                if (query.SortBy.Equals("Price", StringComparison.OrdinalIgnoreCase))
-                {
-                    products = query.IsDecending ? products.OrderByDescending(product => product.ActualPrice) : products.OrderBy(product => product.ActualPrice);
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
+        public async Task<ProductDetailDto?> GetProductByIdAsync(string id)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_connString)) {
+                    using (var command = new SqlCommand("GetById_Product", connection)) {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        command.Parameters.AddWithValue("@ProductId", id);
+                        command.Parameters.Add("@StatusCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+
+                        await connection.OpenAsync();
+
+                        ProductDetailDto? productDto = null;
+                        using (var reader = await command.ExecuteReaderAsync()) {
+                            if (await reader.ReadAsync()) {
+                                productDto = new ProductDetailDto {
+                                    Id = reader.GetString(reader.GetOrdinal("Id")),
+                                    Name = reader.GetString(reader.GetOrdinal("Name")),
+                                    OriginalPrice = reader.GetDecimal(reader.GetOrdinal("OriginalPrice")),
+                                    ActualPrice = reader.GetDecimal(reader.GetOrdinal("ActualPrice")),
+                                    Discription = reader.GetString(reader.GetOrdinal("Discription")),
+                                    CategoryId = reader.GetString(reader.GetOrdinal("CategoryId")),
+                                    CategoryName = reader.GetString(reader.GetOrdinal("CategoryName")),
+                                    SaleCount = reader.GetInt32(reader.GetOrdinal("SaleCount")),
+                                    Stars = reader.IsDBNull(reader.GetOrdinal("Stars")) ? 0 : reader.GetDecimal(reader.GetOrdinal("Stars"))
+                                };
+                            }
+
+                            if (await reader.NextResultAsync()) {
+                                var imageIdOrdinal = reader.GetOrdinal("ImageId");
+                                var imageNameOrdinal = reader.GetOrdinal("ImageName");
+
+                                while (await reader.ReadAsync()) {
+                                    productDto!.ProductImages.Add(new ProductImageDto {
+                                        Id = reader.GetString(imageIdOrdinal),
+                                        ImageName = reader.GetString(imageNameOrdinal),
+                                        ImageBase64 = Convert.ToBase64String((byte[])reader["Data"])
+                                    });
+                                }
+                            }
+
+                            if (await reader.NextResultAsync()) {
+                                var feedbackIdOrdinal = reader.GetOrdinal("FeedbackId");
+                                var feedbackContentOrdinal = reader.GetOrdinal("Content");
+                                var feedbackStarsOrdinal = reader.GetOrdinal("FeedbackStars");
+                                var feedbackCreateAtOrdinal = reader.GetOrdinal("CreateAt");
+                                var feedbackCreateByOrdinal = reader.GetOrdinal("CreateBy");
+
+                                while (await reader.ReadAsync()) {
+                                    productDto!.Feedbacks.Add(new FeedbackDto {
+                                        Id = reader.GetString(feedbackIdOrdinal),
+                                        Content = reader.GetString(feedbackContentOrdinal),
+                                        Stars = reader.GetInt32(feedbackStarsOrdinal),
+                                        CreateAt = reader.GetDateTime(feedbackCreateAtOrdinal),
+                                        CreateBy = reader.IsDBNull(feedbackCreateByOrdinal) ? null : reader.GetString(feedbackCreateByOrdinal)
+                                    });
+                                }
+                            }
+
+                        }
+                        int statusCode = Convert.ToInt32(command.Parameters["@StatusCode"].Value);
+
+                        if (statusCode == 0) return null;
+
+                        return productDto;
+                    }
                 }
             }
-
-            // Pagination
-            var skipNumber = (query.PageNumber - 1) * query.PageSize;
-
-            return await products
-                        .Skip(skipNumber)
-                        .Take(query.PageSize)
-                        .ToListAsync();
-        }
-
-        public async Task<Product?> GetProductByIdAsync(string id)
-        {
-            return await _context.Products
-                                .Include(p => p.Category)
-                                .Include(p => p.ProductImages)
-                                .Include(p => p.Feedbacks).ThenInclude(f => f.AppUser)
-                                .FirstOrDefaultAsync(p => p.Id == id);
+            catch (SqlException ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
         }
 
         public async Task<int?> GetSalesCount(string productId)
@@ -142,19 +266,38 @@ namespace ecommerce.Repositories
             return await _context.Products.AnyAsync(p => p.Id == id);
         }
 
-        public async Task<Product?> UpdateProductAsync(string id, UpdateProductRequestDto productDto)
+        public async Task<int> UpdateProductAsync(string id, UpdateProductRequestDto productDto)
         {
-            var existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
-            if (existingProduct == null) return null;
+            try
+            {
+                using (var connection = new SqlConnection(_connString))
+                {
+                    using (var command = new SqlCommand("Update_Product", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
 
-            existingProduct.Name = productDto.Name;
-            existingProduct.OriginalPrice = productDto.OriginalPrice;
-            existingProduct.ActualPrice = productDto.ActualPrice;
-            existingProduct.Discription = productDto.Discription;
-            existingProduct.CategoryId = productDto.CategoryId;
+                        command.Parameters.AddWithValue("@ProductId", id);
+                        command.Parameters.AddWithValue("@Name", productDto.Name);
+                        command.Parameters.AddWithValue("@OriginalPrice", productDto.OriginalPrice);
+                        command.Parameters.AddWithValue("@ActualPrice", productDto.ActualPrice);
+                        command.Parameters.AddWithValue("@Description", productDto.Discription);
+                        command.Parameters.AddWithValue("@CategoryId", productDto.CategoryId);
 
-            await _context.SaveChangesAsync();
-            return existingProduct;
+                        command.Parameters.Add("@StatusCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+
+                        await connection.OpenAsync();
+                        await command.ExecuteNonQueryAsync();
+
+                        var statusCode = Convert.ToInt32(command.Parameters["@StatusCode"].Value);
+
+                        return statusCode;
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
         }
     }
 }

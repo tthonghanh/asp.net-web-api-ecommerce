@@ -15,7 +15,8 @@ namespace ecommerce.Controllers
         }
 
         [HttpGet("GetAllProductsByOrderId/{orderId}")]
-        public async Task<IActionResult> GetAllProductsByOrderId(string orderId) {
+        public async Task<IActionResult> GetAllProductsByOrderId(string orderId)
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var productList = await _productOrderRepository.GetAllProductsByOrderIdAsync(orderId);

@@ -6,13 +6,13 @@ namespace ecommerce.Interfaces
 {
     public interface IProductRepository
     {
-        Task<List<Product>> GetAllProductsAsync(QueryObject query);
-        Task<List<Product>?> GetAllProductsByCategoryIdAsync(string id, QueryObject query);
-        Task<Product?> GetProductByIdAsync(string id);
+        Task<List<ProductDto>> GetAllProductsAsync(QueryObject query);
+        Task<List<ProductDto>?> GetAllProductsByCategoryIdAsync(string id, QueryObject query);
+        Task<ProductDetailDto?> GetProductByIdAsync(string id);
         Task<int?> GetSalesCount(string productId);
-        Task<(Product product, bool succeed, string message)> CreateProductAsync(CreateProductRequestDto productDto);
-        Task<Product?> UpdateProductAsync(string id, UpdateProductRequestDto productDto);
-        Task<Product?> DeleteProductAsync(string id);
+        Task CreateProductAsync(CreateProductRequestDto productDto);
+        Task<int> UpdateProductAsync(string id, UpdateProductRequestDto productDto);
+        Task DeleteProductAsync(string id);
         Task<bool> ProductExist(string id);
     }
 }

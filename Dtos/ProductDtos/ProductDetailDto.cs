@@ -5,8 +5,8 @@ namespace ecommerce.Dtos.ProductDtos
 {
     public class ProductDetailDto
     {
-        public string Id { get; set; } = null!;
-        public string Name { get; set; } = string.Empty;
+        public string Id { get; set; }
+        public string Name { get; set; }
         public decimal OriginalPrice { get; set; }
         public decimal ActualPrice { get; set; }
         public string? Discription { get; set; }
@@ -14,6 +14,7 @@ namespace ecommerce.Dtos.ProductDtos
         public string? CategoryId { get; set; }
         public string? CategoryName { get; set; }
         public decimal Stars { get; set; }
+        public int SaleCount { get; set; }
         public List<ProductImageDto> ProductImages { get; set; } = [];
         public List<FeedbackDto> Feedbacks { get; set; } = [];
     }

@@ -14,7 +14,6 @@ namespace ecommerce.Mappers
                 Stars = feedbackModel.Stars,
                 CreateAt = feedbackModel.CreateAt,
                 CreateBy = feedbackModel.AppUser?.UserName,
-                ProductId = feedbackModel.ProductId,
             };
         }
 

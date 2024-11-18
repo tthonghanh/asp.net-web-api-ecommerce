@@ -1,8 +1,10 @@
+using System.Data;
 using ecommerce.Data;
 using ecommerce.Dtos.ProductDtos;
 using ecommerce.Interfaces;
 using ecommerce.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace ecommerce.Repositories
@@ -10,9 +12,11 @@ namespace ecommerce.Repositories
     public class ProductImageRepository : IProductImageRepository
     {
         private readonly ApplicationDbContext _context;
-        public ProductImageRepository(ApplicationDbContext context)
+        private readonly string _connString;
+        public ProductImageRepository(ApplicationDbContext context, IConfiguration config)
         {
             _context = context;
+            _connString = config.GetConnectionString("DefaultConnection")!;
         }
 
         public async Task<ProductImage?> DeleteProductImageByIdAsync(string id)
@@ -70,43 +74,51 @@ namespace ecommerce.Repositories
 
         public async Task<(List<ProductImage>? productImages, bool succeed, string message)> UploadProductImageAsync(string productId, IFormFile[] imageFiles)
         {
-            var productModel = await _context.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(p => p.Id == productId);
-            if (productModel == null) return (null, false, "Product Not Found");
-
-            if (productModel.ProductImages.Count == 5) return (productModel.ProductImages.ToList(), false, $"You cannot add more images");
-
-            if (productModel.ProductImages.Count + imageFiles.Length > 5) return (productModel.ProductImages.ToList(), false, $"You can only add {5 - productModel.ProductImages.Count} more image(s)");
-
             const long maxFileSize = 5 * 1024 * 1024;
             foreach (var image in imageFiles)
             {
                 if (image.Length > maxFileSize)
                 {
-                    return (null, false, $"Image size exceeds the maximum allowed size of 5 MB");
+                    throw new Exception("Image size exceeds the maximum allowed size of 5 MB");
                 }
             }
 
             var imageList = new List<ProductImage>();
             foreach (var image in imageFiles)
             {
-                var imageModel = new ProductImage
-                {
-                    ExtensionType = Path.GetExtension(image.FileName),
-                    ProductId = productId
-                };
+                // var imageModel = new ProductImage
+                // {
+                //     ExtensionType = Path.GetExtension(image.FileName),
+                //     ProductId = productId
+                // };
 
-                imageModel.ImageName = $"{productModel.Name}_{imageModel.Id}";
+                // imageModel.ImageName = $"{productModel.Name}_{imageModel.Id}";
 
                 using (var memoryStream = new MemoryStream())
                 {
                     await image.CopyToAsync(memoryStream);
-                    imageModel.Data = memoryStream.ToArray();
+                    var imageData = memoryStream.ToArray();
+
+                    using (var connection = new SqlConnection(_connString)) {
+                        using (var command = new SqlCommand("Create_ProductImage", connection)) {
+                            command.CommandType = CommandType.StoredProcedure;
+
+                            command.Parameters.AddWithValue("@ProductId", productId);
+                            command.Parameters.AddWithValue("@ImageName", productId);
+                            command.Parameters.AddWithValue("@ExtensionType", Path.GetExtension(image.FileName));
+                            command.Parameters.AddWithValue("@Data", imageData);
+
+                            await connection.OpenAsync();
+
+                            await command.ExecuteNonQueryAsync();
+                        }
+                    }
                 }
 
-                await _context.ProductImages.AddAsync(imageModel);
-                await _context.SaveChangesAsync();
+                // await _context.ProductImages.AddAsync(imageModel);
+                // await _context.SaveChangesAsync();
 
-                imageList.Add(imageModel);
+                // imageList.Add(imageModel);
             }
             return (imageList, true, "Images uploaded successfully");
         }

@@ -6,7 +6,7 @@ namespace ecommerce.Dtos.ProductDtos
     {
         [Required]
         [MaxLength(50, ErrorMessage = "Product name cannot be more than 30 characters")]
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; }
         [Required]
         [Range(1, 100000000)]
         public decimal OriginalPrice { get; set; }
@@ -16,7 +16,7 @@ namespace ecommerce.Dtos.ProductDtos
         [Required]
         public string? Discription { get; set; }
         [Required]
-        public string? CategoryId { get; set; }
+        public string CategoryId { get; set; }
         [Required]
         public IFormFile[] ImageFile { get; set; } = null!;
     }

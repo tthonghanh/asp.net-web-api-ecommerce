@@ -26,7 +26,7 @@ namespace ecommerce.Mappers
                 TotalInvoicement = orderModel.TotalInvoicement,
                 Status = orderModel.Status,
                 IsCanceled = orderModel.IsCanceled,
-                AppUserId = orderModel.AppUserId
+                // AppUserId = orderModel.AppUserId
             };
         }
 

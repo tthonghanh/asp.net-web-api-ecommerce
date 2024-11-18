@@ -10,6 +10,6 @@ namespace ecommerce.Dtos.CategoryDtos
         public string Name { get; set; } = null!;
 
         [Required]
-        public string ParentCategory { get; set; } = null!;
+        public string ParentCategory { get; set; }
     }
 }

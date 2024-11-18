@@ -7,7 +7,7 @@ namespace ecommerce.Models
     public class Feedback
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string Content { get; set; } = string.Empty;
+        public string Content { get; set; }
         public int Stars { get; set; }
         public DateTime CreateAt { get; set; } = DateTime.Now;
         public string? ProductId { get; set; }

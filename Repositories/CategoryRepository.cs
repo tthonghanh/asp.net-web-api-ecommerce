@@ -14,7 +14,7 @@ namespace ecommerce.Repositories
             _context = context;
         }
 
-        public async Task<bool> CategoryExist(string id)
+        public async Task<bool> CategoryExist(string? id)
         {
             return await _context.Categories.AnyAsync(category => category.Id == id);
         }

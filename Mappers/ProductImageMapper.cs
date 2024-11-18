@@ -11,8 +11,6 @@ namespace ecommerce.Mappers
             {
                 Id = productImageModel.Id,
                 ImageName = productImageModel.ImageName,
-                ExtensionType = productImageModel.ExtensionType,
-                ProductId = productImageModel.ProductId,
                 ImageBase64 = Convert.ToBase64String(productImageModel.Data)
             };
         }
